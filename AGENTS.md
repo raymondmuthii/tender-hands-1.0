@@ -8,3 +8,7 @@
 > Commits you push to the connected branch sync back to Lovable and show up in
 > the editor, so keep the branch in a working state.
 <!-- LOVABLE:END -->
+
+## Application rules
+- Keep this design recreation frontend-only, with explicitly marked demonstration account and donation flows, until live services are requested.
+- Share charity data and giving controls across discovery and dashboard screens so the demonstration stays consistent.
