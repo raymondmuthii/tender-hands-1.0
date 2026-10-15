@@ -1,24 +1,23 @@
-import { createFileRoute } from "@tanstack/react-router";
+import { createFileRoute, Link } from '@tanstack/react-router';
+import { ArrowRight, BadgeCheck, Search, Smartphone, Sprout, ShieldCheck, LockKeyhole, ReceiptText, Heart, HandHeart } from 'lucide-react';
+import { Button } from '@/components/ui/button';
+import { Header, Footer, CharitySection } from '@/components/tender-hands/shared';
+import { useGiving } from '@/components/tender-hands/giving';
+import garden from '@/assets/community-garden.jpg';
 
-// No head() here: the home route inherits title/description/og/twitter from
-// __root.tsx, and ships no og:image so serve-time hosting can inject the
-// project's social preview (explicit og:image or latest screenshot).
-export const Route = createFileRoute("/")({
-  component: Index,
+export const Route = createFileRoute('/')({
+ head: () => ({ meta: [{ title: 'Tender Hands | A little kindness. A brighter Kenya.' }, { name: 'description', content: 'Discover trusted Kenyan charities and find a cause close to your heart with Tender Hands.' }, { property: 'og:title', content: 'Tender Hands | A brighter Kenya' }, { property: 'og:description', content: 'Connecting generous hearts with trusted Kenyan charities.' }, { property: 'og:type', content: 'website' }, { name: 'twitter:card', content: 'summary_large_image' }] }),
+ component: Index,
 });
-
-// IMPORTANT: Replace this placeholder. See ./README.md for routing conventions.
 function Index() {
-  return (
-    <div
-      className="flex min-h-screen items-center justify-center"
-      style={{ backgroundColor: "#fcfbf8" }}
-    >
-      <img
-        data-lovable-blank-page-placeholder="REMOVE_THIS"
-        src="https://cdn.gpteng.co/blank-app-v1.svg"
-        alt="Your app will live here!"
-      />
-    </div>
-  );
+ const { donate } = useGiving();
+ return <><Header/><main>
+ <section className="hero-section"><div className="site-container hero-grid"><div><p className="eyebrow">Small hearts. Lasting hope.</p><h1 className="hero-title">A little kindness.<br/>A brighter Kenya.</h1><p className="text-sm leading-7 text-muted-foreground max-w-[405px]">Support the people making a difference in our communities. Give securely to verified Kenyan charities with M-Pesa — and see the good your generosity creates.</p><div className="flex gap-3 mt-6"><Button asChild className="h-11 px-5 text-xs"><Link to="/charities">Find a Cause to Support <ArrowRight/></Link></Button><Button variant="outline" asChild className="h-11 px-5 text-xs"><a href="#how-it-works">How It Works</a></Button></div><div className="flex gap-5 mt-5 text-[10px] text-muted-foreground"><span className="flex gap-1.5 items-center"><Smartphone size={13} className="text-primary"/> M-PESA</span><span className="flex gap-1.5 items-center"><ShieldCheck size={13} className="text-primary"/> Every giving hand matters.</span></div></div>
+ <div className="relative"><img src={garden} width={1200} height={912} alt="A Kenyan family and volunteers sharing fresh vegetables in their community garden" className="hero-image" fetchPriority="high"/><div className="hero-image-note"><span className="icon-tile"><HandHeart size={22}/></span><div><p className="text-xs font-semibold">Good grows when we give together.</p><p className="text-[10px] text-muted-foreground mt-1">Tupande Community · Kisumu, Kenya</p></div></div></div></div></section>
+ <section id="impact" className="border-b border-border bg-card"><div className="site-container grid grid-cols-2 md:grid-cols-4 gap-6 py-7"><div><h2 className="text-[18px] mb-1">Together, we do more.</h2><p className="text-[10px] text-muted-foreground">A growing community of everyday givers.</p></div>{[['12,480+','Generous donors'],['48','Verified charities'],['KES 18.6M','Donated to local causes']].map(([value,label]) => <div key={label} className="md:border-l md:border-border md:pl-8"><p className="text-[25px] font-semibold text-primary">{value}</p><p className="text-[10px] text-muted-foreground mt-1">{label}</p></div>)}</div></section>
+ <section id="how-it-works" className="py-12"><div className="site-container"><div className="text-center"><h2 className="section-title">A simple way to make a difference.</h2><p className="section-copy mt-2">From your phone to a community that needs you. In just a few moments.</p></div><div className="grid md:grid-cols-3 gap-8 mt-9">{[{Icon:Search,step:'01 · FIND YOUR CAUSE',title:'Choose a verified charity',copy:'Discover local organisations working on the causes closest to your heart.'},{Icon:Smartphone,step:'02 · GIVE WITH CONFIDENCE',title:'Donate with M-Pesa',copy:'Choose your amount and approve the request. Your generosity goes straight to work.'},{Icon:Sprout,step:'03 · SEE THE DIFFERENCE',title:'Follow your impact',copy:'Get an instant receipt and updates from the communities you are helping.'}].map(({Icon,step,title,copy}) => <div key={step} className="flex gap-4"><span className="icon-tile"><Icon size={21} strokeWidth={1.5}/></span><div><p className="text-[9px] font-semibold text-primary mb-2 tracking-wider">{step}</p><h3 className="text-[16px] font-semibold mb-1">{title}</h3><p className="text-xs leading-6 text-muted-foreground">{copy}</p></div></div>)}</div></div></section>
+ <CharitySection/>
+ <section id="about" className="py-16"><div className="site-container trust-grid"><div><p className="eyebrow">Built on trust</p><h2 className="section-title mt-4 max-w-[390px]">Your generosity deserves<br className="hidden md:block"/> peace of mind.</h2><p className="section-copy mt-4 max-w-[415px]">We make giving personal, transparent and secure. So you can focus on what matters: the people and causes you care about.</p><blockquote className="border-l-2 border-primary pl-4 mt-6"><p className="font-display text-[15px] italic leading-6">“Giving feels different when you know exactly who you're helping.”</p><p className="text-[10px] text-muted-foreground mt-2">— Hapi Wanjiku · Tender Hands donor, Nairobi</p></blockquote></div><div className="grid gap-6">{[{Icon:BadgeCheck,title:'Verified, not just listed',copy:"We review each charity’s registration, leadership and community work before they join."},{Icon:LockKeyhole,title:'Secure M-Pesa payments',copy:'Approve donations directly on your phone. Your M-Pesa PIN is never shared with us.'},{Icon:ReceiptText,title:'A clear record of every gift',copy:'Instant receipts, a personal donation history and community updates keep you connected.'}].map(({Icon,title,copy}) => <div className="flex gap-4" key={title}><span className="icon-tile"><Icon size={20} strokeWidth={1.5}/></span><div><h3 className="font-sans text-sm font-semibold mb-1">{title}</h3><p className="text-xs text-muted-foreground leading-6">{copy}</p></div></div>)}</div></div></section>
+ <section className="bg-accent py-9"><div className="site-container flex justify-between items-center gap-5 flex-wrap"><div><h2 className="text-[26px]">Someone’s tomorrow starts with you.</h2><p className="section-copy mt-2">Start with a cause you believe in. Every contribution matters.</p></div><Button onClick={() => donate()} className="h-11 px-6 text-xs">Make a Difference <Heart size={15}/></Button></div></section>
+ </main><Footer/></>;
 }
