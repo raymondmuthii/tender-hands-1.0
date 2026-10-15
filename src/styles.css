@@ -196,8 +196,8 @@
  .trust-grid { gap:40px; } .dashboard-layout { grid-template-columns:180px minmax(0,1fr); } .dashboard-main { padding:25px; }
 }
 @media(max-width:640px) {
- .site-container { width:calc(100% - 36px); } .hero-section { padding:36px 0; } .hero-grid { grid-template-columns:1fr; gap:28px; }
- .hero-title { font-size:39px; } .hero-image { height:300px; } .section-title { font-size:26px; }
+ .site-container { width:calc(100% - 36px); } .hero-section { padding:28px 0; } .hero-grid { grid-template-columns:1fr; gap:28px; }
+ .hero-title { font-size:39px; } .hero-image { height:260px; } .section-title { font-size:26px; }
  .charity-grid,.trust-grid,.account-grid { grid-template-columns:1fr; } .charity-image { height:210px; }
  .account-grid > :last-child { border-left:0; border-top:1px solid var(--border); padding:30px 0 0; }
  .dashboard-layout { display:block; } .dashboard-sidebar { padding:16px 18px; border-right:0; border-bottom:1px solid var(--border); }
