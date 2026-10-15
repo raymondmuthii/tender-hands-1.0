@@ -13,7 +13,7 @@ export function GivingProvider({ children }: { children: ReactNode }) {
  const [amount, setAmount] = useState('1000');
  const [done, setDone] = useState(false);
  const [donations, setDonations] = useState(startingDonations);
- const donate = (charity = charities[0]) => { setSelected(charity); setAmount('1000'); setDone(false); };
+ const donate = (charity = charities[0]) => { if (!charity) return; setSelected(charity); setAmount('1000'); setDone(false); };
  return <Giving.Provider value={{ donate, donations }}>{children}
   <Dialog open={!!selected} onOpenChange={open => { if (!open) setSelected(null); }}>
    <DialogContent className="rounded-lg max-w-[calc(100%-32px)] sm:max-w-md p-8">
