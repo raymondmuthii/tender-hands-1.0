@@ -1,3 +1,4 @@
+// Core imports for React Query and TanStack Router
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -8,12 +9,16 @@ import {
   Scripts,
   type ErrorComponentProps,
 } from "@tanstack/react-router";
-import { useEffect, type ReactNode } from "react";
+import { type ReactNode } from "react";
 
+// Application-specific imports
 import appCss from "../styles.css?url";
-import { reportLovableError } from "../lib/lovable-error-reporting";
 import { GivingProvider } from "@/components/tender-hands/giving";
 
+/**
+ * 404 Not Found component
+ * Displayed when a user navigates to a route that doesn't exist
+ */
 function NotFoundComponent() {
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -36,12 +41,15 @@ function NotFoundComponent() {
   );
 }
 
+/**
+ * Global error boundary component
+ * Catches and displays errors that occur anywhere in the application
+ * Provides options to retry or return to home page
+ */
 function ErrorComponent({ error, reset }: ErrorComponentProps) {
+  // Log error to console for debugging
   console.error(error);
   const router = useRouter();
-  useEffect(() => {
-    reportLovableError(error, { boundary: "tanstack_root_error_component" });
-  }, [error]);
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-background px-4">
@@ -74,7 +82,12 @@ function ErrorComponent({ error, reset }: ErrorComponentProps) {
   );
 }
 
+/**
+ * Root route configuration
+ * Defines the base layout, metadata, and error handling for the entire application
+ */
 export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()({
+  // HTML head configuration - metadata and external resources
   head: () => ({
     meta: [
       { charSet: "utf-8" },
@@ -92,6 +105,7 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
         href: appCss,
       },
       { rel: "icon", href: "/favicon.svg", type: "image/svg+xml" },
+      // Google Fonts - DM Sans for body text, Lora for headings
       { rel: "stylesheet", href: "https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&family=Lora:wght@400;500;600&display=swap" },
     ],
   }),
@@ -101,6 +115,10 @@ export const Route = createRootRouteWithContext<{ queryClient: QueryClient }>()(
   errorComponent: ErrorComponent,
 });
 
+/**
+ * Root HTML shell component
+ * Provides the base HTML structure for server-side rendering
+ */
 function RootShell({ children }: { children: ReactNode }) {
   return (
     <html lang="en">
@@ -115,12 +133,17 @@ function RootShell({ children }: { children: ReactNode }) {
   );
 }
 
+/**
+ * Root component wrapper
+ * Sets up global providers (React Query, Giving context) for the entire application
+ */
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
 
   return (
     <QueryClientProvider client={queryClient}>
-      {/* Required: nested routes render here. Removing <Outlet /> breaks all child routes. */}
+      {/* GivingProvider manages donation state across the app */}
+      {/* Outlet renders the matched child route component */}
       <GivingProvider><Outlet /></GivingProvider>
     </QueryClientProvider>
   );

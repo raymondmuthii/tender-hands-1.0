@@ -1,3 +1,16 @@
+/**
+ * Generates a standalone HTML error page for 500 errors.
+ *
+ * This page is returned when server-side rendering fails catastrophically.
+ * It's a complete, self-contained HTML document with inline styles (no external
+ * dependencies) to ensure it renders correctly even when the app's assets fail.
+ *
+ * Features:
+ * - Clean, centered layout
+ * - Try Again button (refreshes the page)
+ * - Go Home link
+ * - Mobile-responsive
+ */
 export function renderErrorPage(): string {
   return `<!doctype html>
 <html lang="en">
