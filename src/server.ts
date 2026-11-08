@@ -1,12 +1,3 @@
-/**
- * Custom server-side fetch handler (Nitro/Cloudflare Worker entry point)
- *
- * Wraps TanStack Start's default server entry with additional error handling.
- * The main issue addressed: h3 (the HTTP framework used by TanStack Start) can
- * swallow in-handler throws into a generic 500 JSON response instead of
- * propagating the original error. This wrapper detects that case and returns
- * a proper HTML error page instead of a bare JSON body.
- */
 import "./lib/error-capture"; // Side-effect import: patches console.error for server-side error tracking
 
 import { consumeLastCapturedError } from "./lib/error-capture";

@@ -3,8 +3,6 @@ import { createRouter } from "@tanstack/react-router";
 import { routeTree } from "./routeTree.gen";
 
 /**
- * TanStack Router instance factory
- *
  * Creates a fresh router and QueryClient on each call. Called once on the
  * client and once per SSR request on the server to ensure request isolation.
  */
