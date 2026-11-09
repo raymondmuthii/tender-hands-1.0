@@ -173,7 +173,7 @@
 .account-grid { display:grid; grid-template-columns:1fr 1fr; gap:45px; }
 .account-grid > :last-child { border-left:1px solid var(--border); padding-left:45px; }
 .dashboard-layout { display:grid; grid-template-columns:220px minmax(0,1fr); min-height:100vh; }
-.dashboard-sidebar { border-right:1px solid var(--border); background:var(--card); padding:28px 20px; }
+.dashboard-sidebar { border-right:1px solid var(--border); background:var(--card); padding:28px 20px; display:flex; flex-direction:column; }
 .dashboard-main { padding:30px 40px; background:var(--secondary); }
 .donation-table { width:100%; border-collapse:collapse; font-size:12px; text-align:left; }
 .donation-table th { font-weight:500; color:var(--muted-foreground); background:var(--secondary); }

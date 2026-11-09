@@ -1,4 +1,4 @@
-# Logs
+# ── Logs ──────────────────────────────────────────────────────────────────
 logs
 *.log
 npm-debug.log*
@@ -7,20 +7,30 @@ yarn-error.log*
 pnpm-debug.log*
 lerna-debug.log*
 
-node_modules
-dist
-dist-ssr
-.output
-.vinxi
-.tanstack/**
-.nitro
-*.local
+# ── Frontend ───────────────────────────────────────────────────────────────
+frontend/node_modules
+frontend/dist
+frontend/dist-ssr
+frontend/.output
+frontend/.vinxi
+frontend/.tanstack/**
+frontend/.nitro
+frontend/*.local
 
-# Wrangler / Cloudflare
+# ── Backend ────────────────────────────────────────────────────────────────
+backend/.venv
+backend/__pycache__
+backend/**/__pycache__
+backend/*.pyc
+backend/instance/
+backend/*.db
+backend/.env
+
+# ── Wrangler / Cloudflare ──────────────────────────────────────────────────
 .wrangler/
 .dev.vars
 
-# Editor directories and files
+# ── Editor ─────────────────────────────────────────────────────────────────
 .vscode/*
 !.vscode/extensions.json
 .idea

@@ -1,17 +1,40 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Link } from '@tanstack/react-router';
-import { HandHeart, ArrowRight, Menu, X, MapPin, BadgeCheck, LockKeyhole, Instagram, Facebook, Linkedin } from 'lucide-react';
+import { HandHeart, ArrowRight, Menu, X, MapPin, BadgeCheck, LockKeyhole, Instagram, Facebook, Linkedin, LayoutDashboard, ShieldCheck } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { charities, kes, type Charity } from './data';
 import { useGiving } from './giving';
+import { api } from '@/lib/api';
+
 export function Brand() { return <Link to="/" className="brand" aria-label="Tender Hands home"><span className="brand-mark"><HandHeart size={22} strokeWidth={1.5}/></span>Tender Hands</Link>; }
+
 export function Header() {
- const [open,setOpen] = useState(false); const {donate} = useGiving();
+ const [open,setOpen] = useState(false);
+ const { donate } = useGiving();
+ const [role, setRole] = useState<string | null>(null);
+
+ // Check auth state client-side only (no localStorage during SSR)
+ useEffect(() => {
+   if (!api.auth.isLoggedIn()) return;
+   api.auth.me().then(u => setRole(u.role)).catch(() => {});
+ }, []);
+
+ const dashboardLink = role === 'admin' ? '/admin' : '/dashboard';
+ const dashboardLabel = role === 'admin' ? 'Admin Panel' : 'My Dashboard';
+ const DashboardIcon = role === 'admin' ? ShieldCheck : LayoutDashboard;
+
  return <header className="bg-card border-b border-border sticky top-0 z-30"><div className="site-container flex h-[76px] items-center justify-between gap-4"><Brand/>
  <nav className="hidden md:flex gap-7 text-xs font-medium" aria-label="Main navigation"><Link to="/charities" className="hover:text-primary">Explore Charities</Link><a href="/#how-it-works" className="hover:text-primary">How It Works</a><a href="/#impact" className="hover:text-primary">Our Impact</a><a href="/#about" className="hover:text-primary">About Us</a></nav>
- <div className="hidden md:flex items-center gap-3"><Button asChild variant="ghost" size="sm"><Link to="/account">Log In</Link></Button><Button size="sm" onClick={() => donate()}>Donate Now <HeartIcon/></Button></div>
+ <div className="hidden md:flex items-center gap-3">
+   {role ? (
+     <Button asChild variant="ghost" size="sm"><Link to={dashboardLink}><DashboardIcon size={14}/> {dashboardLabel}</Link></Button>
+   ) : (
+     <Button asChild variant="ghost" size="sm"><Link to="/account">Log In</Link></Button>
+   )}
+   <Button size="sm" onClick={() => donate()}>Donate Now <HeartIcon/></Button>
+ </div>
  <Button variant="ghost" size="icon" className="md:hidden" aria-label={open ? 'Close menu' : 'Open menu'} onClick={() => setOpen(!open)}>{open ? <X/> : <Menu/>}</Button>
- </div>{open && <nav className="md:hidden site-container flex flex-col gap-4 pb-5 text-sm" aria-label="Mobile navigation" onClick={() => setOpen(false)}><Link to="/charities">Explore Charities</Link><a href="/#how-it-works">How It Works</a><a href="/#impact">Our Impact</a><a href="/#about">About Us</a><Link to="/account">Log In</Link><Button onClick={() => donate()}>Donate Now</Button></nav>}</header>;
+ </div>{open && <nav className="md:hidden site-container flex flex-col gap-4 pb-5 text-sm" aria-label="Mobile navigation" onClick={() => setOpen(false)}><Link to="/charities">Explore Charities</Link><a href="/#how-it-works">How It Works</a><a href="/#impact">Our Impact</a><a href="/#about">About Us</a>{role ? <Link to={dashboardLink}>{dashboardLabel}</Link> : <Link to="/account">Log In</Link>}<Button onClick={() => donate()}>Donate Now</Button></nav>}</header>;
 }
 function HeartIcon() { return <HandHeart size={14}/>; }
 export function CharityCard({ charity }: { charity: Charity }) { const {donate} = useGiving(); const percent = Math.round(charity.amount/charity.goal*100); return <article className="charity-card">
@@ -19,9 +42,30 @@ export function CharityCard({ charity }: { charity: Charity }) { const {donate} 
  <div className="p-4"><p className="text-[9px] uppercase tracking-widest font-bold text-primary mb-2">{charity.category}</p><h3 className="text-[16px] font-semibold min-h-10 leading-5">{charity.name}</h3><p className="flex items-center gap-1 text-[10px] text-muted-foreground mt-1"><MapPin size={11}/>{charity.location}</p><p className="text-[11px] leading-[1.7] text-muted-foreground my-3 min-h-[38px]">{charity.description}</p>
  <div className="flex justify-between text-[10px] items-baseline"><span className="font-bold">{kes(charity.amount)}</span><span className="text-primary">{percent}%</span></div><progress className="progress-track block mt-2" value={charity.amount} max={charity.goal} aria-label={`${charity.name} funding progress`}/><p className="text-[9px] text-muted-foreground mt-1.5 mb-3">of {kes(charity.goal)} goal</p><Button className="w-full h-9 text-xs" onClick={() => donate(charity)}>Donate <ArrowRight size={13}/></Button></div>
  </article>; }
-export function CharitySection() { return <section id="charities" className="bg-secondary py-14"><div className="site-container"><div className="flex items-end justify-between gap-5 mb-7 flex-wrap"><div><h2 className="section-title mb-2">Find a cause close to your heart.</h2><p className="section-copy">Local roots. Lasting change. Every organisation is verified by our team.</p></div><Link to="/charities" className="flex items-center gap-2 text-xs text-primary font-semibold mb-1">Explore all charities <ArrowRight size={15}/></Link></div><div className="charity-grid">{charities.map(c => <CharityCard key={c.id} charity={c}/>)}</div></div></section>; }
+export function CharitySection() {
+  const [items, setItems] = useState(charities);
+  useEffect(() => {
+    api.charities.list({ featured: true, per_page: 4 })
+      .then(({ data }) => {
+        if (data.length > 0) {
+          setItems(data.map(c => ({
+            id: c.id,
+            name: c.name,
+            category: c.category,
+            location: c.location,
+            description: c.description,
+            amount: c.amount,
+            goal: c.goal,
+            image: c.image ?? charities.find(x => x.id === c.id)?.image ?? (charities[0]?.image ?? ''),
+          })));
+        }
+      })
+      .catch(() => {}); // keep fallback data on error
+  }, []);
+  return <section id="charities" className="bg-secondary py-14"><div className="site-container"><div className="flex items-end justify-between gap-5 mb-7 flex-wrap"><div><h2 className="section-title mb-2">Find a cause close to your heart.</h2><p className="section-copy">Local roots. Lasting change. Every organisation is verified by our team.</p></div><Link to="/charities" className="flex items-center gap-2 text-xs text-primary font-semibold mb-1">Explore all charities <ArrowRight size={15}/></Link></div><div className="charity-grid">{items.map(c => <CharityCard key={c.id} charity={c}/>)}</div></div></section>;
+}
 export function Footer() { return <footer className="bg-footer text-footer-foreground"><div className="site-container pt-12 pb-6"><div className="grid grid-cols-2 md:grid-cols-[2fr_1fr_1fr_1.2fr] gap-8 pb-10"><div className="col-span-2 md:col-span-1"><Brand/><p className="text-xs leading-6 opacity-70 max-w-[270px] mt-4">Connecting generous hearts with trusted Kenyan charities. A little kindness goes a long way.</p><div className="flex gap-4 mt-4">{[[Instagram,'Instagram'],[Facebook,'Facebook'],[Linkedin,'LinkedIn']].map(([Icon,label]) => { const I = Icon as typeof Instagram; return <span key={String(label)} aria-label={String(label)}><I size={15}/></span>; })}</div></div>
  <div className="text-xs space-y-3"><p className="font-semibold mb-4">Discover</p><Link className="block opacity-70" to="/charities">Explore Charities</Link><a className="block opacity-70" href="/#how-it-works">How It Works</a><a className="block opacity-70" href="/#impact">Our Impact</a></div>
  <div className="text-xs space-y-3"><p className="font-semibold mb-4">Tender Hands</p><a className="block opacity-70" href="/#about">About Us</a><a className="block opacity-70" href="/#about">Charity Verification</a><a className="block opacity-70" href="mailto:hello@tenderhands.ke">Partner With Us</a></div>
  <div className="text-xs space-y-3"><p className="font-semibold mb-4">Here to help</p><a className="block opacity-70" href="mailto:hello@tenderhands.ke">Help Centre</a><a className="block opacity-70" href="mailto:hello@tenderhands.ke">hello@tenderhands.ke</a><a className="block opacity-70" href="tel:+254700123456">+254 700 123 456</a></div></div>
- <div className="border-t border-footer-foreground/15 pt-5 flex justify-between gap-4 flex-wrap text-[10px] opacity-70"><span>© 2026 Tender Hands. Made for a kinder Kenya.</span><span className="flex gap-5"><span>Privacy Policy</span><span>Terms of Use</span></span><span className="flex gap-2 items-center"><LockKeyhole size={12}/> Secure payments with <strong>M-PESA</strong></span></div><p className="text-[9px] opacity-50 mt-5">Demonstration platform · All featured charities and donation activity are fictional. Contact details shown are from the sample design.</p></div></footer>; }
+ <div className="border-t border-footer-foreground/15 pt-5 flex justify-between gap-4 flex-wrap text-[10px] opacity-70"><span>© 2026 Tender Hands. Made for a kinder Kenya.</span><span className="flex gap-5"><span>Privacy Policy</span><span>Terms of Use</span></span><span className="flex gap-2 items-center"><LockKeyhole size={12}/> Secure payments with <strong>M-PESA</strong></span></div></div></footer>; }
