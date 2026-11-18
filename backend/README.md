@@ -60,6 +60,7 @@ Key variables:
 | `MPESA_SHORTCODE` | `174379` | Business shortcode |
 | `MPESA_PASSKEY` | – | Lipa Na M-Pesa passkey |
 | `MPESA_CALLBACK_URL` | – | Public HTTPS URL for Daraja callbacks |
+| `CRON_SECRET` | – | Shared secret the scheduler sends to `POST /api/recurring/run-due` |
 
 ### 4. Database migrations
 
@@ -101,6 +102,8 @@ API is available at `http://localhost:5000`.
 pytest
 ```
 
+85 tests (auth, charities, donations, recurring scheduling, admin, M-Pesa).
+
 For verbose output:
 
 ```bash
@@ -128,6 +131,7 @@ All endpoints are prefixed `/api`.
 | Method | Path | Auth | Description |
 |---|---|---|---|
 | `GET` | `/charities` | – | List approved charities (filter: `category`, `featured`, `search`, `page`, `per_page`) |
+| `GET` | `/charities/mine` | `charity` role | The signed-in owner's charity (`null` before they apply) |
 | `GET` | `/charities/<slug>` | – | Get charity detail |
 | `POST` | `/charities` | `charity` role | Submit charity application (creates as pending) |
 | `PATCH` | `/charities/<slug>` | Owner or admin | Update charity fields |
@@ -136,7 +140,7 @@ All endpoints are prefixed `/api`.
 
 | Method | Path | Auth | Description |
 |---|---|---|---|
-| `GET` | `/charities/<slug>/stories` | – | List published impact stories |
+| `GET` | `/charities/<slug>/stories` | – | List published impact stories (owner/admin: `?all=1` includes drafts) |
 | `POST` | `/charities/<slug>/stories` | Owner | Create impact story |
 | `PATCH` | `/charities/<slug>/stories/<id>` | Owner | Update story |
 | `DELETE` | `/charities/<slug>/stories/<id>` | Owner | Delete story |
@@ -166,6 +170,7 @@ All endpoints are prefixed `/api`.
 | `POST` | `/recurring` | `donor` role | Create recurring donation |
 | `PATCH` | `/recurring/<id>` | `donor` role | Update amount / status / next run date |
 | `DELETE` | `/recurring/<id>` | `donor` role | Cancel (sets status to `cancelled`) |
+| `POST` | `/recurring/run-due` | `X-Cron-Secret` header | Charge every due recurring donation (scheduler only) |
 
 ### Dashboard
 
@@ -220,16 +225,69 @@ Payments use Safaricom Daraja STK Push (sandbox by default).
 
 > **Never trust the client** to mark a donation as completed – only the Daraja callback does this.
 
-For sandbox testing, use [Safaricom's Daraja sandbox](https://developer.safaricom.co.ke/) and expose your local callback URL with a tool like `ngrok`.
+Requests are built to match Daraja's requirements: the `Timestamp` is
+`YYYYMMDDHHmmss` in **East Africa Time** (UTC+3) and the same string is used for
+the password, `Amount` is a whole number, and `PartyA` / `PhoneNumber` are
+normalised to `2547XXXXXXXX`.
+
+### Checking the sandbox
+
+```bash
+cd backend
+.venv\Scripts\activate           # macOS/Linux: source .venv/bin/activate
+python scripts/mpesa_sandbox_check.py 254708374149 1
+```
+
+Sends one STK Push with your `.env` credentials and prints Daraja's response.
+Full walkthrough (Daraja app, passkey, ngrok, expected database rows) is in
+[`docs/mpesa-testing.md`](docs/mpesa-testing.md).
+
+The live sandbox flow has **not** been verified from this repository yet – see
+the checklist in that document.
+
+---
+
+## Scheduled recurring donations
+
+Vercel has no background worker, so a scheduler calls the endpoint instead:
+
+```bash
+curl -X POST https://your-backend.vercel.app/api/recurring/run-due \
+  -H "X-Cron-Secret: $CRON_SECRET"
+```
+
+- The header is compared in constant time against `CRON_SECRET`; a missing or
+  wrong secret returns `403`, and an unset `CRON_SECRET` rejects every call.
+- Every `active` recurring donation with `next_run_date <= today` gets a pending
+  donation (linked via `donations.recurring_donation_id`), an STK Push attempt,
+  and a `next_run_date` advanced by one month.
+- A failed STK Push is logged and counted in `failed`; the rest of the batch
+  still runs.
+- Calling it twice on the same day does not charge twice: the schedule has
+  already moved on, and a donation created earlier the same day is skipped.
+
+Locally:
+
+```bash
+curl -X POST http://localhost:5000/api/recurring/run-due -H "X-Cron-Secret: <your CRON_SECRET>"
+```
+
+A daily external scheduler (cron-job.org, GitHub Actions) is set up in
+[`../DEPLOYMENT.md`](../DEPLOYMENT.md) step 5.
 
 ---
 
 ## Deployment to Vercel
 
-Vercel serves the app through `api.py` at the project root (inside `backend/`).
+Full dashboard settings, environment variables and the smoke-test checklist live
+in [`../DEPLOYMENT.md`](../DEPLOYMENT.md). In short:
 
-1. Set all environment variables in the Vercel dashboard.
-2. Set `DATABASE_URL` to your PostgreSQL connection string.
-3. Push to your linked branch. Vercel will detect the Python runtime and serve the `app` object from `api.py`.
-
-> No `vercel.json` is needed – Vercel's Python runtime auto-detects `api.py`.
+1. Root directory `backend`, Framework Preset `Flask`.
+2. Vercel's Flask preset looks for `app.py`, `index.py`, `server.py`, `main.py`,
+   `wsgi.py` or `asgi.py` – `api.py` is not one of those names, so
+   `backend/index.py` re-exports the app from `api.py`. Local commands keep
+   using `flask --app api:app`.
+3. `DATABASE_URL` must be PostgreSQL (`psycopg2-binary` is in
+   `requirements.txt`); SQLite does not persist on serverless functions.
+4. Run `flask --app api:app db upgrade` against that database from your machine.
+5. No `vercel.json` is used.

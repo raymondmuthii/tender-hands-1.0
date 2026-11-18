@@ -4,8 +4,9 @@ A Kenyan charity donation platform. The repo contains two independent apps:
 
 ```
 tender-hands-pixel-perfect/
-├── frontend/   TanStack Start (React + TypeScript + Vite)
-└── backend/    Flask REST API (Python)
+├── frontend/        TanStack Start (React + TypeScript + Vite)
+├── backend/         Flask REST API (Python)
+└── DEPLOYMENT.md    Vercel dashboard settings for both projects
 ```
 
 ---
@@ -50,6 +51,38 @@ Frontend available at → **http://localhost:3000** (check terminal for exact po
 
 ---
 
+## Running the tests
+
+**Backend** (85 tests, in-memory SQLite, no backend server needed):
+
+```powershell
+cd backend
+.venv\Scripts\activate
+pytest
+```
+
+**Frontend** (28 tests, Vitest + Testing Library, API client mocked):
+
+```powershell
+cd frontend
+npm test
+```
+
+---
+
+## Who lands where
+
+| Role | Page after login |
+|---|---|
+| `donor` | `/dashboard` |
+| `charity` | `/owner` – submit a charity, manage stories, beneficiaries and inventory |
+| `admin` | `/admin` – approve / reject / feature charities |
+
+New accounts are created as `donor` (default) or `charity`; admin accounts are
+made with the seed script locally or `flask shell` in production.
+
+---
+
 ## How they connect
 
 `frontend/.env` controls where the frontend points:
@@ -73,4 +106,16 @@ In production, set `VITE_API_URL` to your deployed backend URL in the Vercel das
 
 ---
 
-See `backend/README.md` for full API docs, migration commands, and M-Pesa setup.
+---
+
+## Deploying
+
+Both apps deploy to Vercel as two projects (backend `backend/`, frontend
+`frontend/`) configured entirely in the dashboard – there is no `vercel.json`.
+See **`DEPLOYMENT.md`** for the exact settings, every environment variable, and
+the post-deploy smoke-test checklist.
+
+---
+
+See `backend/README.md` for full API docs, migration commands, and M-Pesa setup
+(`backend/docs/mpesa-testing.md` covers sandbox verification).
