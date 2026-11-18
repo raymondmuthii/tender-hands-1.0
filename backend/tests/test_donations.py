@@ -195,6 +195,30 @@ class TestMpesaCallback:
         )
         assert resp.status_code == 200
 
+    def test_callback_does_not_complete_mismatched_payment(
+        self, client, db, approved_charity, donor_user
+    ):
+        donation = Donation(
+            user_id=donor_user.id,
+            charity_id=approved_charity.id,
+            amount=2_000,
+            phone="+254722000099",
+            checkout_request_id="ws_CO_MISMATCH",
+            status="pending",
+        )
+        db.session.add(donation)
+        db.session.commit()
+
+        resp = client.post(
+            "/api/mpesa/callback",
+            json=self._callback_payload("ws_CO_MISMATCH", success=True),
+        )
+        assert resp.status_code == 200
+
+        db.session.refresh(donation)
+        assert donation.status == "pending"
+        assert donation.mpesa_receipt is None
+
 
 class TestReceipt:
     def test_receipt_for_completed_donation(

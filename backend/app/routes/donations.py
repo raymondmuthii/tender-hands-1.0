@@ -157,7 +157,36 @@ def mpesa_callback():
         logger.warning("Callback for unknown checkout_request_id: %s", checkout_id)
         return {"ResultCode": 0, "ResultDesc": "OK"}, 200
 
+    # Daraja may retry callbacks. Do not let a late callback change a final
+    # payment state.
+    if donation.status != "pending":
+        return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
+
     if result["result_code"] == 0:
+        expected_phone = mpesa_service.normalize_msisdn(donation.phone)
+        callback_phone = result.get("phone")
+        try:
+            callback_phone = (
+                mpesa_service.normalize_msisdn(callback_phone)
+                if callback_phone
+                else None
+            )
+        except ValueError:
+            callback_phone = None
+        if (
+            result.get("amount") != donation.amount
+            or callback_phone != expected_phone
+            or not result.get("mpesa_receipt")
+        ):
+            logger.error(
+                "M-Pesa callback mismatch for donation %s: amount=%s phone=%s receipt=%s",
+                donation.id,
+                result.get("amount"),
+                callback_phone,
+                result.get("mpesa_receipt"),
+            )
+            return {"ResultCode": 0, "ResultDesc": "Accepted"}, 200
+
         donation.status = "completed"
         donation.mpesa_receipt = result.get("mpesa_receipt")
     else:
