@@ -147,6 +147,63 @@ export interface AdminCharity extends Charity {
   created_at: string;
 }
 
+/** The charity owned by the signed-in charity account. */
+export interface MyCharity extends Charity {
+  owner_id: number;
+  created_at: string;
+}
+
+export interface ImpactStory {
+  id: number;
+  charity_id: number;
+  title: string;
+  content: string;
+  image_url: string | null;
+  published: boolean;
+  created_at: string;
+}
+
+export interface ImpactStoryInput {
+  title: string;
+  content: string;
+  image_url?: string | null;
+  published?: boolean;
+}
+
+export interface Beneficiary {
+  id: number;
+  charity_id: number;
+  name: string;
+  age: number | null;
+  location: string | null;
+  story: string | null;
+  created_at: string;
+}
+
+export interface BeneficiaryInput {
+  name: string;
+  age?: number | null;
+  location?: string | null;
+  story?: string | null;
+}
+
+export interface InventoryItem {
+  id: number;
+  charity_id: number;
+  name: string;
+  quantity: number;
+  unit: string | null;
+  notes: string | null;
+  updated_at: string;
+}
+
+export interface InventoryItemInput {
+  name: string;
+  quantity: number;
+  unit?: string | null;
+  notes?: string | null;
+}
+
 // ── API surface ────────────────────────────────────────────────────────────
 
 export const api = {
@@ -236,6 +293,11 @@ export const api = {
       return request<Charity>(`/api/charities/${slug}`);
     },
 
+    /** The charity owned by the current charity account, or null before applying. */
+    async mine(): Promise<MyCharity | null> {
+      return request<MyCharity | null>('/api/charities/mine', {}, true);
+    },
+
     async apply(data: {
       name: string;
       slug: string;
@@ -255,12 +317,105 @@ export const api = {
       description: string;
       goal_amount: number;
       image_url: string;
+      status: 'pending' | 'approved' | 'rejected';
+      is_featured: boolean;
     }>): Promise<Charity> {
       return request<Charity>(
         `/api/charities/${slug}`,
         { method: 'PATCH', body: JSON.stringify(data) },
         true,
       );
+    },
+
+    // ── Impact stories ────────────────────────────────────────────────────
+
+    async stories(slug: string, params?: { all?: boolean }): Promise<ImpactStory[]> {
+      const query = params?.all ? '?all=1' : '';
+      return request<ImpactStory[]>(`/api/charities/${slug}/stories${query}`);
+    },
+
+    async createStory(slug: string, data: ImpactStoryInput): Promise<ImpactStory> {
+      return request<ImpactStory>(
+        `/api/charities/${slug}/stories`,
+        { method: 'POST', body: JSON.stringify(data) },
+        true,
+      );
+    },
+
+    async updateStory(
+      slug: string,
+      id: number,
+      data: Partial<ImpactStoryInput>,
+    ): Promise<ImpactStory> {
+      return request<ImpactStory>(
+        `/api/charities/${slug}/stories/${id}`,
+        { method: 'PATCH', body: JSON.stringify(data) },
+        true,
+      );
+    },
+
+    async deleteStory(slug: string, id: number): Promise<void> {
+      await request(`/api/charities/${slug}/stories/${id}`, { method: 'DELETE' }, true);
+    },
+
+    // ── Beneficiaries ─────────────────────────────────────────────────────
+
+    async beneficiaries(slug: string): Promise<Beneficiary[]> {
+      return request<Beneficiary[]>(`/api/charities/${slug}/beneficiaries`, {}, true);
+    },
+
+    async createBeneficiary(slug: string, data: BeneficiaryInput): Promise<Beneficiary> {
+      return request<Beneficiary>(
+        `/api/charities/${slug}/beneficiaries`,
+        { method: 'POST', body: JSON.stringify(data) },
+        true,
+      );
+    },
+
+    async updateBeneficiary(
+      slug: string,
+      id: number,
+      data: Partial<BeneficiaryInput>,
+    ): Promise<Beneficiary> {
+      return request<Beneficiary>(
+        `/api/charities/${slug}/beneficiaries/${id}`,
+        { method: 'PATCH', body: JSON.stringify(data) },
+        true,
+      );
+    },
+
+    async deleteBeneficiary(slug: string, id: number): Promise<void> {
+      await request(`/api/charities/${slug}/beneficiaries/${id}`, { method: 'DELETE' }, true);
+    },
+
+    // ── Inventory ─────────────────────────────────────────────────────────
+
+    async inventory(slug: string): Promise<InventoryItem[]> {
+      return request<InventoryItem[]>(`/api/charities/${slug}/inventory`, {}, true);
+    },
+
+    async createInventoryItem(slug: string, data: InventoryItemInput): Promise<InventoryItem> {
+      return request<InventoryItem>(
+        `/api/charities/${slug}/inventory`,
+        { method: 'POST', body: JSON.stringify(data) },
+        true,
+      );
+    },
+
+    async updateInventoryItem(
+      slug: string,
+      id: number,
+      data: Partial<InventoryItemInput>,
+    ): Promise<InventoryItem> {
+      return request<InventoryItem>(
+        `/api/charities/${slug}/inventory/${id}`,
+        { method: 'PATCH', body: JSON.stringify(data) },
+        true,
+      );
+    },
+
+    async deleteInventoryItem(slug: string, id: number): Promise<void> {
+      await request(`/api/charities/${slug}/inventory/${id}`, { method: 'DELETE' }, true);
     },
   },
 

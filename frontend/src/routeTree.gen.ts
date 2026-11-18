@@ -14,6 +14,7 @@ import { Route as AccountRouteImport } from './routes/account'
 import { Route as AdminRouteImport } from './routes/admin'
 import { Route as CharitiesRouteImport } from './routes/charities'
 import { Route as DashboardRouteImport } from './routes/dashboard'
+import { Route as OwnerRouteImport } from './routes/owner'
 
 const IndexRoute = IndexRouteImport.update({
   id: '/',
@@ -40,6 +41,11 @@ const DashboardRoute = DashboardRouteImport.update({
   path: '/dashboard',
   getParentRoute: () => rootRouteImport,
 } as any)
+const OwnerRoute = OwnerRouteImport.update({
+  id: '/owner',
+  path: '/owner',
+  getParentRoute: () => rootRouteImport,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
@@ -47,6 +53,7 @@ export interface FileRoutesByFullPath {
   '/admin': typeof AdminRoute
   '/charities': typeof CharitiesRoute
   '/dashboard': typeof DashboardRoute
+  '/owner': typeof OwnerRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
@@ -54,6 +61,7 @@ export interface FileRoutesByTo {
   '/admin': typeof AdminRoute
   '/charities': typeof CharitiesRoute
   '/dashboard': typeof DashboardRoute
+  '/owner': typeof OwnerRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
@@ -62,13 +70,22 @@ export interface FileRoutesById {
   '/admin': typeof AdminRoute
   '/charities': typeof CharitiesRoute
   '/dashboard': typeof DashboardRoute
+  '/owner': typeof OwnerRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/account' | '/admin' | '/charities' | '/dashboard'
+  fullPaths:
+    '/' | '/account' | '/admin' | '/charities' | '/dashboard' | '/owner'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/account' | '/admin' | '/charities' | '/dashboard'
-  id: '__root__' | '/' | '/account' | '/admin' | '/charities' | '/dashboard'
+  to: '/' | '/account' | '/admin' | '/charities' | '/dashboard' | '/owner'
+  id:
+    | '__root__'
+    | '/'
+    | '/account'
+    | '/admin'
+    | '/charities'
+    | '/dashboard'
+    | '/owner'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -77,6 +94,7 @@ export interface RootRouteChildren {
   AdminRoute: typeof AdminRoute
   CharitiesRoute: typeof CharitiesRoute
   DashboardRoute: typeof DashboardRoute
+  OwnerRoute: typeof OwnerRoute
 }
 
 declare module '@tanstack/react-router' {
@@ -116,6 +134,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof DashboardRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/owner': {
+      id: '/owner'
+      path: '/owner'
+      fullPath: '/owner'
+      preLoaderRoute: typeof OwnerRouteImport
+      parentRoute: typeof rootRouteImport
+    }
   }
 }
 
@@ -125,6 +150,7 @@ const rootRouteChildren: RootRouteChildren = {
   AdminRoute: AdminRoute,
   CharitiesRoute: CharitiesRoute,
   DashboardRoute: DashboardRoute,
+  OwnerRoute: OwnerRoute,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)

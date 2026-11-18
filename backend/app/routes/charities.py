@@ -78,6 +78,19 @@ def list_charities():
     )
 
 
+@charities_bp.get("/mine")
+@require_charity
+def get_my_charity():
+    """Return the charity owned by the current user (null before they apply)."""
+    user_id = current_user_id()
+    charity = (
+        Charity.query.filter_by(owner_id=user_id).order_by(Charity.id.desc()).first()
+    )
+    if not charity:
+        return success_response(None)
+    return success_response(_detail_schema.dump(charity))
+
+
 @charities_bp.get("/<slug>")
 def get_charity(slug: str):
     charity = Charity.query.filter_by(slug=slug).first()
@@ -167,7 +180,22 @@ def list_stories(slug: str):
     charity = Charity.query.filter_by(slug=slug).first()
     if not charity:
         return error_response("Charity not found.", 404)
-    stories = charity.impact_stories.filter_by(published=True).all()
+
+    # The public only sees published stories; the owner and admins can ask for
+    # drafts too with ?all=1 so they can manage them.
+    show_all = request.args.get("all", "").lower() in ("1", "true")
+    if show_all:
+        try:
+            verify_jwt_in_request()
+            user = db.session.get(User, current_user_id())
+        except Exception:
+            user = None
+        if user is None or (user.role != "admin" and charity.owner_id != user.id):
+            show_all = False
+
+    stories = charity.impact_stories.order_by(ImpactStory.id).all()
+    if not show_all:
+        stories = [s for s in stories if s.published]
     return success_response(_stories_schema.dump(stories))
 
 

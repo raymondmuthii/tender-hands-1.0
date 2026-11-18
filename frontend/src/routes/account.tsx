@@ -4,6 +4,7 @@ import { ArrowRight, Eye, EyeOff, HandHeart, LockKeyhole, ShieldCheck, Loader2, 
 import { Button } from '@/components/ui/button';
 import { Brand } from '@/components/tender-hands/shared';
 import { api, ApiError } from '@/lib/api';
+import { routeForRole } from '@/lib/roles';
 
 export const Route = createFileRoute('/account')({
   head: () => ({
@@ -78,6 +79,7 @@ function Account() {
   const [regEmail, setRegEmail] = useState('');
   const [regPhone, setRegPhone] = useState('');
   const [regPw, setRegPw] = useState('');
+  const [regRole, setRegRole] = useState<'donor' | 'charity'>('donor');
   const [regLoading, setRegLoading] = useState(false);
   const [regError, setRegError] = useState('');
 
@@ -86,8 +88,8 @@ function Account() {
     setLoginLoading(true);
     setLoginError('');
     try {
-      await api.auth.login(loginId, loginPw);
-      navigate({ to: '/dashboard' });
+      const { user } = await api.auth.login(loginId, loginPw);
+      navigate({ to: routeForRole(user.role) });
     } catch (err) {
       setLoginError(err instanceof ApiError ? err.message : 'Login failed. Please try again.');
     } finally {
@@ -100,14 +102,14 @@ function Account() {
     setRegLoading(true);
     setRegError('');
     try {
-      await api.auth.register({
+      const { user } = await api.auth.register({
         full_name: regName,
         email: regEmail,
         ...(regPhone ? { phone: regPhone } : {}),
         password: regPw,
-        role: 'donor',
+        role: regRole,
       });
-      navigate({ to: '/dashboard' });
+      navigate({ to: routeForRole(user.role) });
     } catch (err) {
       if (err instanceof ApiError && err.errors) {
         const first = Object.values(err.errors).flat()[0];
@@ -187,6 +189,29 @@ function Account() {
                   Kenyan phone number <span className="text-muted-foreground text-[10px]">(optional)</span>
                   <input placeholder="+254 712 345 678" value={regPhone} onChange={e => setRegPhone(e.target.value)} />
                 </label>
+                <fieldset className="grid gap-2">
+                  <legend className="text-xs mb-1">I am joining as</legend>
+                  <label className="flex items-center gap-2 text-[11px]">
+                    <input
+                      type="radio"
+                      name="register-role"
+                      value="donor"
+                      checked={regRole === 'donor'}
+                      onChange={() => setRegRole('donor')}
+                    />
+                    I'm donating to charities
+                  </label>
+                  <label className="flex items-center gap-2 text-[11px]">
+                    <input
+                      type="radio"
+                      name="register-role"
+                      value="charity"
+                      checked={regRole === 'charity'}
+                      onChange={() => setRegRole('charity')}
+                    />
+                    I'm registering a charity
+                  </label>
+                </fieldset>
                 <Password id="register-password" value={regPw} onChange={setRegPw} placeholder="At least 8 chars, a number and symbol" />
                 <p className="text-[10px] text-muted-foreground -mt-2">
                   At least 8 characters, with a number and a symbol.

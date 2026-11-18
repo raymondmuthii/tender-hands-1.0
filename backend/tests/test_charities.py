@@ -1,7 +1,7 @@
 """Tests for charity listing, filtering, and application."""
 
 import pytest
-from app.models.charity import Charity
+from app.models.charity import Charity, ImpactStory
 
 
 class TestCharityList:
@@ -165,3 +165,99 @@ class TestCharityApplication:
             headers={"Authorization": f"Bearer {access}"},
         )
         assert resp.status_code == 403
+
+
+class TestMyCharity:
+    """GET /api/charities/mine – used by the owner dashboard."""
+
+    def test_returns_the_owners_charity(self, client, approved_charity, charity_tokens):
+        access, _ = charity_tokens
+        resp = client.get(
+            "/api/charities/mine",
+            headers={"Authorization": f"Bearer {access}"},
+        )
+        assert resp.status_code == 200
+        data = resp.get_json()["data"]
+        assert data["id"] == "test-charity"
+        assert data["status"] == "approved"
+
+    def test_returns_null_before_applying(self, client, charity_user, charity_tokens):
+        access, _ = charity_tokens
+        resp = client.get(
+            "/api/charities/mine",
+            headers={"Authorization": f"Bearer {access}"},
+        )
+        assert resp.status_code == 200
+        assert resp.get_json()["data"] is None
+
+    def test_returns_pending_charity_while_awaiting_review(
+        self, client, db, charity_user, charity_tokens
+    ):
+        pending = Charity(
+            slug="awaiting-review",
+            name="Awaiting Review",
+            category="Livelihoods",
+            location="Nakuru",
+            description="A charity application that is waiting for admin review.",
+            goal_amount=80_000,
+            owner_id=charity_user.id,
+            status="pending",
+        )
+        db.session.add(pending)
+        db.session.commit()
+
+        access, _ = charity_tokens
+        resp = client.get(
+            "/api/charities/mine",
+            headers={"Authorization": f"Bearer {access}"},
+        )
+        assert resp.get_json()["data"]["status"] == "pending"
+
+    def test_requires_charity_role(self, client, donor_tokens):
+        access, _ = donor_tokens
+        resp = client.get(
+            "/api/charities/mine",
+            headers={"Authorization": f"Bearer {access}"},
+        )
+        assert resp.status_code == 403
+
+    def test_requires_auth(self, client, db):
+        assert client.get("/api/charities/mine").status_code == 401
+
+
+class TestStoryVisibility:
+    """Public sees published stories only; the owner can ask for drafts."""
+
+    def _draft_story(self, db, charity):
+        story = ImpactStory(
+            charity_id=charity.id,
+            title="A draft impact story",
+            content="Not published yet.",
+            published=False,
+        )
+        db.session.add(story)
+        db.session.commit()
+        return story
+
+    def test_public_list_hides_drafts(self, client, db, approved_charity):
+        self._draft_story(db, approved_charity)
+        resp = client.get("/api/charities/test-charity/stories")
+        assert resp.get_json()["data"] == []
+
+    def test_owner_can_list_drafts(self, client, db, approved_charity, charity_tokens):
+        self._draft_story(db, approved_charity)
+        access, _ = charity_tokens
+        resp = client.get(
+            "/api/charities/test-charity/stories?all=1",
+            headers={"Authorization": f"Bearer {access}"},
+        )
+        assert len(resp.get_json()["data"]) == 1
+
+    def test_donor_cannot_list_drafts(self, client, db, approved_charity, donor_tokens):
+        self._draft_story(db, approved_charity)
+        access, _ = donor_tokens
+        resp = client.get(
+            "/api/charities/test-charity/stories?all=1",
+            headers={"Authorization": f"Bearer {access}"},
+        )
+        assert resp.get_json()["data"] == []

@@ -2,6 +2,8 @@
 
 import pytest
 
+from app.models.user import User
+
 
 class TestRegister:
     def test_register_success(self, client, db):
@@ -75,6 +77,46 @@ class TestRegister:
             },
         )
         assert resp.status_code == 422
+
+    def test_register_cannot_self_assign_admin_role(self, client, db):
+        """Public sign-up must never produce an admin account."""
+        resp = client.post(
+            "/api/auth/register",
+            json={
+                "full_name": "Sneaky User",
+                "email": "sneaky@example.com",
+                "password": "Secret@99",
+                "role": "admin",
+            },
+        )
+        assert resp.status_code == 422
+        assert "role" in resp.get_json()["errors"]
+        assert User.query.filter_by(email="sneaky@example.com").first() is None
+
+    def test_register_as_charity_owner(self, client, db):
+        resp = client.post(
+            "/api/auth/register",
+            json={
+                "full_name": "Charity Owner",
+                "email": "new-owner@example.com",
+                "password": "Secret@99",
+                "role": "charity",
+            },
+        )
+        assert resp.status_code == 201
+        assert resp.get_json()["data"]["user"]["role"] == "charity"
+
+    def test_register_defaults_to_donor_role(self, client, db):
+        resp = client.post(
+            "/api/auth/register",
+            json={
+                "full_name": "Default Donor",
+                "email": "default@example.com",
+                "password": "Secret@99",
+            },
+        )
+        assert resp.status_code == 201
+        assert resp.get_json()["data"]["user"]["role"] == "donor"
 
 
 class TestLogin:
