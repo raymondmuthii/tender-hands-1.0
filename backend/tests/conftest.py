@@ -18,6 +18,7 @@ from datetime import date
 class _TestConfig(TestingConfig):
     JWT_SECRET_KEY = "test-secret-key-long-enough-32-bytes-ok"
     SECRET_KEY = "test-flask-secret-key-long-enough"
+    CRON_SECRET = "test-cron-secret-value"
 
 
 @pytest.fixture(scope="session")

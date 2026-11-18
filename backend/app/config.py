@@ -48,6 +48,9 @@ class Config:
     )
     MPESA_ENV = os.environ.get("MPESA_ENV", "sandbox")  # "sandbox" | "production"
 
+    # Shared secret for the external scheduler that triggers POST /api/recurring/run-due
+    CRON_SECRET = os.environ.get("CRON_SECRET", "")
+
 
 class DevelopmentConfig(Config):
     DEBUG = True

@@ -18,6 +18,10 @@ class Donation(db.Model):
     phone = db.Column(db.String(20), nullable=False)
     # checkout_request_id links the STK push to this donation for the callback
     checkout_request_id = db.Column(db.String(100), nullable=True, index=True)
+    # Set when the donation was created by a recurring-donation run
+    recurring_donation_id = db.Column(
+        db.Integer, db.ForeignKey("recurring_donations.id"), nullable=True, index=True
+    )
     status = db.Column(
         db.Enum("pending", "completed", "failed", name="donation_statuses"),
         nullable=False,
@@ -32,6 +36,9 @@ class Donation(db.Model):
     # Relationships
     user = db.relationship("User", back_populates="donations")
     charity = db.relationship("Charity", back_populates="donations")
+    recurring_donation = db.relationship(
+        "RecurringDonation", back_populates="donations"
+    )
 
     def __repr__(self) -> str:
         return f"<Donation {self.id} KES {self.amount} [{self.status}]>"
@@ -64,6 +71,9 @@ class RecurringDonation(db.Model):
     # Relationships
     user = db.relationship("User", back_populates="recurring_donations")
     charity = db.relationship("Charity", back_populates="recurring_donations")
+    donations = db.relationship(
+        "Donation", back_populates="recurring_donation", lazy="dynamic"
+    )
 
     def __repr__(self) -> str:
         return f"<RecurringDonation {self.id} KES {self.amount} {self.frequency}>"
