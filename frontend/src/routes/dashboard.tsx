@@ -63,22 +63,25 @@ function Dashboard() {
       return;
     }
 
-    Promise.all([
-      api.auth.me(),
-      api.dashboard.summary(),
-      api.donations.myHistory(),
-      api.recurring.list(),
-    ])
-      .then(([u, s, d, r]) => {
-        // Admins have their own dashboard
-        if (u.role === 'admin') {
-          navigate({ to: '/admin' });
+    api.auth
+      .me()
+      .then(u => {
+        // Admins and charity owners have their own dashboards. Check the role
+        // before calling donor-only endpoints, which would 403 for them.
+        if (u.role === 'admin' || u.role === 'charity') {
+          navigate({ to: u.role === 'admin' ? '/admin' : '/owner' });
           return;
         }
         setUser(u);
-        setSummary(s);
-        setDonations(d);
-        setRecurring(r);
+        return Promise.all([
+          api.dashboard.summary(),
+          api.donations.myHistory(),
+          api.recurring.list(),
+        ]).then(([s, d, r]) => {
+          setSummary(s);
+          setDonations(d);
+          setRecurring(r);
+        });
       })
       .catch(() => {
         // Token expired or invalid — send to login

@@ -19,8 +19,8 @@ export function Header() {
    api.auth.me().then(u => setRole(u.role)).catch(() => {});
  }, []);
 
- const dashboardLink = role === 'admin' ? '/admin' : '/dashboard';
- const dashboardLabel = role === 'admin' ? 'Admin Panel' : 'My Dashboard';
+ const dashboardLink = role === 'admin' ? '/admin' : role === 'charity' ? '/owner' : '/dashboard';
+ const dashboardLabel = role === 'admin' ? 'Admin Panel' : role === 'charity' ? 'Charity Dashboard' : 'My Dashboard';
  const DashboardIcon = role === 'admin' ? ShieldCheck : LayoutDashboard;
 
  return <header className="bg-card border-b border-border sticky top-0 z-30"><div className="site-container flex h-[76px] items-center justify-between gap-4"><Brand/>

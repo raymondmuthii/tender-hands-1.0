@@ -92,6 +92,16 @@ describe('Donor dashboard', () => {
     await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: '/admin' }));
   });
 
+  it('sends charity owners to their own dashboard without calling donor endpoints', async () => {
+    mockApi.auth.me.mockResolvedValue({ ...donorUser, role: 'charity' as const });
+
+    render(<Dashboard />);
+
+    await waitFor(() => expect(navigateMock).toHaveBeenCalledWith({ to: '/owner' }));
+    expect(mockApi.dashboard.summary).not.toHaveBeenCalled();
+    expect(mockApi.auth.logout).not.toHaveBeenCalled();
+  });
+
   it('asks logged-out visitors to sign in', async () => {
     mockApi.auth.isLoggedIn.mockReturnValue(false);
 
