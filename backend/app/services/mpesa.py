@@ -7,11 +7,19 @@ Environment variables consumed:
   MPESA_PASSKEY           – Lipa Na M-Pesa online passkey
   MPESA_CALLBACK_URL      – Public HTTPS URL for Daraja to POST results to
   MPESA_ENV               – "sandbox" | "production"  (default: sandbox)
+
+Daraja requirements honoured here (see docs/mpesa-testing.md):
+  * Timestamp is YYYYMMDDHHmmss in East Africa Time, and the exact same string
+    is used to build the password – a mismatch is rejected by Safaricom.
+  * Amount is a whole number of KES.
+  * Phone numbers go out as 2547XXXXXXXX (no "+", no leading zero).
+  * AccountReference is at most 12 characters, TransactionDesc at most 13.
 """
 
 import base64
 import logging
-from datetime import datetime, timezone
+import re
+from datetime import datetime, timedelta, timezone
 
 import requests
 from flask import current_app
@@ -20,6 +28,13 @@ logger = logging.getLogger(__name__)
 
 _SANDBOX_BASE = "https://sandbox.safaricom.co.ke"
 _PROD_BASE = "https://api.safaricom.co.ke"
+
+# Kenya has been UTC+3 all year round since 1960 (no daylight saving), so a
+# fixed offset is exact and does not rely on the host's timezone database.
+EAT = timezone(timedelta(hours=3))
+
+# 254 followed by a Kenyan mobile prefix (Safaricom 7xx, Airtel 1xx)
+_MSISDN_RE = re.compile(r"^254(7\d{8}|1\d{8})$")
 
 
 def _base_url() -> str:
@@ -43,10 +58,46 @@ def _get_access_token() -> str:
     return response.json()["access_token"]
 
 
+def _timestamp() -> str:
+    """Current East Africa Time as YYYYMMDDHHmmss."""
+    return datetime.now(EAT).strftime("%Y%m%d%H%M%S")
+
+
 def _build_password(shortcode: str, passkey: str, timestamp: str) -> str:
     """Base64(shortcode + passkey + timestamp)."""
     raw = f"{shortcode}{passkey}{timestamp}"
     return base64.b64encode(raw.encode()).decode()
+
+
+def normalize_msisdn(phone: str) -> str:
+    """Convert a Kenyan number to the 254XXXXXXXXX form Daraja expects.
+
+    Accepts +254712345678, 254712345678, 0712345678, 712345678 and any of
+    those with spaces or dashes. Raises ValueError for anything else so a
+    rejected phone is logged instead of being sent to Safaricom.
+    """
+    digits = re.sub(r"\D", "", phone or "")
+
+    if digits.startswith("254") and len(digits) == 12:
+        msisdn = digits
+    elif digits.startswith("0") and len(digits) == 10:
+        msisdn = f"254{digits[1:]}"
+    elif len(digits) == 9:
+        msisdn = f"254{digits}"
+    else:
+        msisdn = digits
+
+    if not _MSISDN_RE.match(msisdn):
+        raise ValueError(f"Invalid Kenyan phone number: {phone!r}")
+    return msisdn
+
+
+def _as_int(value, default=None):
+    """Coerce a Daraja field that may arrive as int, str or None."""
+    try:
+        return int(value)
+    except (TypeError, ValueError):
+        return default
 
 
 def stk_push(phone: str, amount: int, account_reference: str, description: str) -> dict:
@@ -56,7 +107,7 @@ def stk_push(phone: str, amount: int, account_reference: str, description: str) 
         phone:              Donor phone in +254XXXXXXXXX format.
         amount:             Amount in KES (integer).
         account_reference:  Short label (e.g. charity slug, max 12 chars).
-        description:        Human-readable description (max 20 chars).
+        description:        Human-readable description (max 13 chars).
 
     Returns:
         Daraja response dict containing at minimum:
@@ -70,17 +121,18 @@ def stk_push(phone: str, amount: int, account_reference: str, description: str) 
 
     Raises:
         requests.HTTPError on non-2xx responses.
+        ValueError if the phone number cannot be normalised.
         KeyError if env vars are missing.
     """
     shortcode = current_app.config["MPESA_SHORTCODE"]
     passkey = current_app.config["MPESA_PASSKEY"]
     callback_url = current_app.config["MPESA_CALLBACK_URL"]
 
-    timestamp = datetime.now(timezone.utc).strftime("%Y%m%d%H%M%S")
+    # One timestamp, used for both the password and the request body.
+    timestamp = _timestamp()
     password = _build_password(shortcode, passkey, timestamp)
 
-    # Daraja expects phone without the leading '+': 254XXXXXXXXX
-    normalized_phone = phone.lstrip("+")
+    msisdn = normalize_msisdn(phone)
 
     token = _get_access_token()
     url = f"{_base_url()}/mpesa/stkpush/v1/processrequest"
@@ -90,13 +142,13 @@ def stk_push(phone: str, amount: int, account_reference: str, description: str) 
         "Password": password,
         "Timestamp": timestamp,
         "TransactionType": "CustomerPayBillOnline",
-        "Amount": amount,
-        "PartyA": normalized_phone,
+        "Amount": int(amount),
+        "PartyA": msisdn,
         "PartyB": shortcode,
-        "PhoneNumber": normalized_phone,
+        "PhoneNumber": msisdn,
         "CallBackURL": callback_url,
         "AccountReference": account_reference[:12],
-        "TransactionDesc": description[:20],
+        "TransactionDesc": description[:13],
     }
 
     response = requests.post(
@@ -127,30 +179,41 @@ def parse_callback(payload: dict) -> dict:
         "phone": str | None,
     }
     """
-    body = payload.get("Body", {})
-    stk_callback = body.get("stkCallback", {})
+    body = payload.get("Body") or {}
+    stk_callback = body.get("stkCallback") or {}
 
-    checkout_request_id = stk_callback.get("CheckoutRequestID", "")
-    result_code = int(stk_callback.get("ResultCode", -1))
-    result_desc = stk_callback.get("ResultDesc", "")
+    checkout_request_id = stk_callback.get("CheckoutRequestID") or ""
+    result_code = _as_int(stk_callback.get("ResultCode"), -1)
+    result_desc = stk_callback.get("ResultDesc") or ""
 
     mpesa_receipt = None
     amount = None
     phone = None
 
+    # CallbackMetadata only exists for successful payments
     if result_code == 0:
-        items = stk_callback.get("CallbackMetadata", {}).get("Item", [])
-        item_map = {item["Name"]: item.get("Value") for item in items}
+        metadata = stk_callback.get("CallbackMetadata") or {}
+        items = metadata.get("Item") or []
+        item_map = {
+            item.get("Name"): item.get("Value")
+            for item in items
+            if isinstance(item, dict) and item.get("Name")
+        }
         mpesa_receipt = item_map.get("MpesaReceiptNumber")
-        amount = item_map.get("Amount")
+        amount = _as_int(item_map.get("Amount"))
+
         phone_raw = item_map.get("PhoneNumber")
-        phone = f"+{phone_raw}" if phone_raw else None
+        if phone_raw not in (None, ""):
+            try:
+                phone = f"+{normalize_msisdn(str(phone_raw))}"
+            except ValueError:
+                phone = str(phone_raw)
 
     return {
         "checkout_request_id": checkout_request_id,
         "result_code": result_code,
         "result_desc": result_desc,
         "mpesa_receipt": mpesa_receipt,
-        "amount": int(amount) if amount is not None else None,
+        "amount": amount,
         "phone": phone,
     }
