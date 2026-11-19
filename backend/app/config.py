@@ -22,6 +22,13 @@ class Config:
         SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI.replace(
             "postgres://", "postgresql://", 1
         )
+    # Pin the driver to psycopg2, the package listed in requirements.txt.
+    # SQLAlchemy 2.0.36+ resolves a bare "postgresql://" to psycopg 3, which
+    # is not installed and fails at import time with ModuleNotFoundError.
+    if SQLALCHEMY_DATABASE_URI and SQLALCHEMY_DATABASE_URI.startswith("postgresql://"):
+        SQLALCHEMY_DATABASE_URI = SQLALCHEMY_DATABASE_URI.replace(
+            "postgresql://", "postgresql+psycopg2://", 1
+        )
     SQLALCHEMY_TRACK_MODIFICATIONS = False
 
     # JWT
