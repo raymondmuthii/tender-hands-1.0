@@ -65,6 +65,7 @@ use "Sensitive" and never commit them.
 | `MPESA_SHORTCODE` | `174379` for sandbox; your paybill number in production |
 | `MPESA_PASSKEY` 🔒 | Daraja → Simulate → Test Credentials (sandbox) |
 | `MPESA_CALLBACK_URL` | `https://tender-hands-api.vercel.app/api/mpesa/callback` |
+| `MPESA_DEMO_MODE` | `true` to record donations as paid without calling Daraja (class demo; labelled `M-PESA (demo)`). Leave unset for real payments |
 | `CRON_SECRET` 🔒 | Generate: `python -c "import secrets; print(secrets.token_urlsafe(32))"` – the scheduler sends it as the `X-Cron-Secret` header |
 
 Also set `PYTHON_VERSION` = `3.12` if the detected version cannot install

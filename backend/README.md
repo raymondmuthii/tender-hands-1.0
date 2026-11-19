@@ -60,6 +60,7 @@ Key variables:
 | `MPESA_SHORTCODE` | `174379` | Business shortcode |
 | `MPESA_PASSKEY` | – | Lipa Na M-Pesa passkey |
 | `MPESA_CALLBACK_URL` | – | Public HTTPS URL for Daraja callbacks |
+| `MPESA_DEMO_MODE` | `false` | `true` records donations as paid without calling Daraja – for class demos only. Demo donations are labelled `M-PESA (demo)` with a `DEMO…` receipt |
 | `CRON_SECRET` | – | Shared secret the scheduler sends to `POST /api/recurring/run-due` |
 
 ### 4. Database migrations

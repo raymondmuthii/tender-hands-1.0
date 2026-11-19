@@ -64,6 +64,13 @@ class Config:
         "MPESA_CALLBACK_URL", "https://your-domain.com/api/mpesa/callback"
     )
     MPESA_ENV = os.environ.get("MPESA_ENV", "sandbox")  # "sandbox" | "production"
+    # Class-demo switch: record a donation as paid without contacting Safaricom.
+    # Off unless explicitly enabled; every demo donation is labelled as such.
+    MPESA_DEMO_MODE = os.environ.get("MPESA_DEMO_MODE", "").lower() in (
+        "1",
+        "true",
+        "yes",
+    )
 
     # Shared secret for the external scheduler that triggers POST /api/recurring/run-due
     CRON_SECRET = os.environ.get("CRON_SECRET", "")
@@ -75,6 +82,8 @@ class DevelopmentConfig(Config):
 
 class TestingConfig(Config):
     TESTING = True
+    # Tests must never take the demo shortcut, whatever the developer's .env says.
+    MPESA_DEMO_MODE = False
     SQLALCHEMY_DATABASE_URI = "sqlite:///:memory:"
     JWT_ACCESS_TOKEN_EXPIRES = timedelta(minutes=5)
 

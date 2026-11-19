@@ -2,7 +2,7 @@
 
 import logging
 import time
-from flask import Blueprint, request
+from flask import Blueprint, current_app, request
 from flask_jwt_extended import verify_jwt_in_request
 from marshmallow import ValidationError
 
@@ -68,6 +68,24 @@ def create_donation():
     db.session.add(donation)
     db.session.flush()  # get donation.id before commit
 
+    # Class-demo mode: complete the donation locally instead of calling Daraja.
+    # The record is labelled so no one mistakes it for a real payment.
+    if current_app.config.get("MPESA_DEMO_MODE"):
+        donation.status = "completed"
+        donation.payment_method = "M-PESA (demo)"
+        donation.mpesa_receipt = f"DEMO{donation.id:05d}"
+        db.session.commit()
+        return success_response(
+            {
+                "donation_id": donation.id,
+                "status": donation.status,
+                "checkout_request_id": None,
+                "demo": True,
+                "message": "Demo payment recorded. No money was charged.",
+            },
+            201,
+        )
+
     # Attempt the STK push. Never report success when Daraja did not accept it:
     # the donor would wait for a prompt that never arrives.
     started = time.monotonic()
@@ -103,6 +121,7 @@ def create_donation():
             "donation_id": donation.id,
             "status": donation.status,
             "checkout_request_id": donation.checkout_request_id,
+            "demo": False,
             "message": "STK push sent. Complete payment on your phone.",
         },
         201,

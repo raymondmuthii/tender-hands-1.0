@@ -426,7 +426,14 @@ export const api = {
       charity_id: string;   // slug
       amount: number;
       phone: string;
-    }): Promise<{ donation_id: number; status: string; checkout_request_id: string; message: string }> {
+    }): Promise<{
+      donation_id: number;
+      status: string;
+      checkout_request_id: string | null;
+      message: string;
+      /** True when the server recorded a class-demo payment without Safaricom. */
+      demo?: boolean;
+    }> {
       return request('/api/donations', { method: 'POST', body: JSON.stringify(data) }, true);
     },
 

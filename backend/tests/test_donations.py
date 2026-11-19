@@ -93,6 +93,39 @@ class TestCreateDonation:
         )
         assert resp.status_code == 401
 
+    def test_demo_mode_completes_without_contacting_daraja(
+        self, app, monkeypatch, client, db, approved_charity, donor_tokens
+    ):
+        monkeypatch.setitem(app.config, "MPESA_DEMO_MODE", True)
+        access, _ = donor_tokens
+
+        with patch("app.routes.donations.mpesa_service.stk_push") as push:
+            resp = self._donate(client, access)
+
+        push.assert_not_called()
+        assert resp.status_code == 201
+        data = resp.get_json()["data"]
+        assert data["demo"] is True
+        assert data["status"] == "completed"
+
+        donation = Donation.query.one()
+        assert donation.status == "completed"
+        assert donation.payment_method == "M-PESA (demo)"
+        assert donation.mpesa_receipt.startswith("DEMO")
+
+    def test_create_donation_is_not_demo_by_default(
+        self, client, approved_charity, donor_tokens
+    ):
+        access, _ = donor_tokens
+        with patch(
+            "app.routes.donations.mpesa_service.stk_push",
+            return_value={"CheckoutRequestID": "ws_CO_REAL"},
+        ):
+            resp = self._donate(client, access)
+
+        assert resp.status_code == 201
+        assert resp.get_json()["data"]["demo"] is False
+
     def test_create_donation_min_amount(self, client, approved_charity, donor_tokens):
         access, _ = donor_tokens
         with patch("app.routes.donations.mpesa_service.stk_push", return_value={}):

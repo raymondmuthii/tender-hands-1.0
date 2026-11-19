@@ -107,6 +107,31 @@ describe('Donation dialog', () => {
     });
   });
 
+  it('labels a demo payment instead of telling the donor to check their phone', async () => {
+    mockApi.auth.isLoggedIn.mockReturnValue(true);
+    mockApi.donations.create.mockResolvedValue({
+      donation_id: 4,
+      status: 'completed',
+      checkout_request_id: null,
+      message: 'Demo payment recorded. No money was charged.',
+      demo: true,
+    });
+
+    openDialog();
+
+    fireEvent.change(await screen.findByLabelText(/Donation amount/i), {
+      target: { value: '1500' },
+    });
+    fireEvent.change(screen.getByLabelText(/M-Pesa phone number/i), {
+      target: { value: '+254722000099' },
+    });
+    fireEvent.click(screen.getByRole('button', { name: /send m-pesa request/i }));
+
+    expect(await screen.findByText(/Demo payment complete/i)).toBeInTheDocument();
+    expect(screen.getByText(/No money was\s+charged/i)).toBeInTheDocument();
+    expect(screen.queryByText(/Check your phone for the M-Pesa prompt/i)).not.toBeInTheDocument();
+  });
+
   it('shows the API error when the donation request fails', async () => {
     mockApi.auth.isLoggedIn.mockReturnValue(true);
     mockApi.donations.create.mockRejectedValue(

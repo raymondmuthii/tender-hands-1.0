@@ -18,6 +18,7 @@ export function GivingProvider({ children }: { children: ReactNode }) {
   const [amount, setAmount] = useState('1000');
   const [phone, setPhone] = useState('');
   const [done, setDone] = useState(false);
+  const [demo, setDemo] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [errorMsg, setErrorMsg] = useState('');
 
@@ -36,6 +37,7 @@ export function GivingProvider({ children }: { children: ReactNode }) {
     setAmount('1000');
     setPhone('');
     setDone(false);
+    setDemo(false);
     setErrorMsg('');
   };
 
@@ -47,11 +49,12 @@ export function GivingProvider({ children }: { children: ReactNode }) {
     setErrorMsg('');
 
     try {
-      await api.donations.create({
+      const result = await api.donations.create({
         charity_id: selected.id,
         amount: Number(amount),
         phone,
       });
+      setDemo(result.demo === true);
       setDone(true);
     } catch (err: unknown) {
       const msg = err instanceof Error ? err.message : 'Something went wrong. Please try again.';
@@ -67,7 +70,23 @@ export function GivingProvider({ children }: { children: ReactNode }) {
 
       <Dialog open={!!selected} onOpenChange={open => { if (!open) setSelected(null); }}>
         <DialogContent className="rounded-lg max-w-[calc(100%-32px)] sm:max-w-md p-8">
-          {done ? (
+          {done && demo ? (
+            /* ── Class demo — recorded without contacting M-Pesa ── */
+            <>
+              <div className="icon-tile mx-auto"><CheckCircle2 size={24} /></div>
+              <DialogTitle className="text-center font-display text-2xl">
+                Demo payment complete.
+              </DialogTitle>
+              <DialogDescription className="text-center">
+                This is a class demo: your KES {Number(amount).toLocaleString('en-KE')} donation to{' '}
+                {selected?.name} was recorded as paid without contacting M-Pesa. No money was
+                charged.
+              </DialogDescription>
+              <Button asChild onClick={() => setSelected(null)}>
+                <Link to="/dashboard">View donation history <Heart size={16} /></Link>
+              </Button>
+            </>
+          ) : done ? (
             <>
               <div className="icon-tile mx-auto"><CheckCircle2 size={24} /></div>
               <DialogTitle className="text-center font-display text-2xl">
