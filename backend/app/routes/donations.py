@@ -67,7 +67,8 @@ def create_donation():
     db.session.add(donation)
     db.session.flush()  # get donation.id before commit
 
-    # Attempt STK push; if M-Pesa creds are not configured, record without push
+    # Attempt the STK push. Never report success when Daraja did not accept it:
+    # the donor would wait for a prompt that never arrives.
     try:
         result = mpesa_service.stk_push(
             phone=phone,
@@ -77,8 +78,16 @@ def create_donation():
         )
         donation.checkout_request_id = result.get("CheckoutRequestID")
     except Exception as exc:
-        logger.warning("STK Push failed (may be unconfigured in dev): %s", exc)
+        logger.error("STK Push failed for donation %s: %s", donation.id, exc)
         donation.checkout_request_id = None
+
+    if not donation.checkout_request_id:
+        donation.status = "failed"
+        db.session.commit()
+        return error_response(
+            "We could not send the M-Pesa request to your phone. Nothing was charged.",
+            502,
+        )
 
     db.session.commit()
 

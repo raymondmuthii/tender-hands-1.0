@@ -157,6 +157,15 @@ def stk_push(phone: str, amount: int, account_reference: str, description: str) 
         headers={"Authorization": f"Bearer {token}"},
         timeout=15,
     )
+    if response.status_code >= 400:
+        # Daraja explains the rejection in the body (wrong passkey, unknown
+        # shortcode, phone not allowed in sandbox, ...). Log it before raising
+        # so the cause is visible in the server logs.
+        logger.error(
+            "Daraja rejected the STK push (%s): %s",
+            response.status_code,
+            response.text[:500],
+        )
     response.raise_for_status()
     data = response.json()
 

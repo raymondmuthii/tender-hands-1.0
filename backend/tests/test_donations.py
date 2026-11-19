@@ -32,8 +32,8 @@ class TestCreateDonation:
         assert data["status"] == "pending"
         assert data["checkout_request_id"] == "ws_CO_TEST123"
 
-    def test_create_donation_stk_push_failure_still_creates_record(
-        self, client, approved_charity, donor_tokens
+    def test_create_donation_failed_push_is_reported_not_faked(
+        self, client, db, approved_charity, donor_tokens
     ):
         access, _ = donor_tokens
         with patch(
@@ -42,8 +42,28 @@ class TestCreateDonation:
         ):
             resp = self._donate(client, access)
 
-        assert resp.status_code == 201
-        assert resp.get_json()["data"]["status"] == "pending"
+        # The donor must not be told to check their phone when no STK push
+        # reached Daraja.
+        assert resp.status_code == 502
+        assert resp.get_json()["success"] is False
+
+        # The attempt is still recorded, as a failure, for the audit trail.
+        donation = Donation.query.one()
+        assert donation.status == "failed"
+        assert donation.checkout_request_id is None
+
+    def test_create_donation_response_without_checkout_id_is_an_error(
+        self, client, db, approved_charity, donor_tokens
+    ):
+        access, _ = donor_tokens
+        with patch(
+            "app.routes.donations.mpesa_service.stk_push",
+            return_value={"ResponseCode": "1"},
+        ):
+            resp = self._donate(client, access)
+
+        assert resp.status_code == 502
+        assert Donation.query.one().status == "failed"
 
     def test_create_donation_unapproved_charity(
         self, client, db, charity_user, donor_tokens
