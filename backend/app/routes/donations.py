@@ -1,6 +1,7 @@
 """Donation routes: initiate, history, receipt, M-Pesa callback."""
 
 import logging
+import time
 from flask import Blueprint, request
 from flask_jwt_extended import verify_jwt_in_request
 from marshmallow import ValidationError
@@ -69,6 +70,7 @@ def create_donation():
 
     # Attempt the STK push. Never report success when Daraja did not accept it:
     # the donor would wait for a prompt that never arrives.
+    started = time.monotonic()
     try:
         result = mpesa_service.stk_push(
             phone=phone,
@@ -78,7 +80,12 @@ def create_donation():
         )
         donation.checkout_request_id = result.get("CheckoutRequestID")
     except Exception as exc:
-        logger.error("STK Push failed for donation %s: %s", donation.id, exc)
+        logger.error(
+            "STK Push failed for donation %s after %.2fs: %s",
+            donation.id,
+            time.monotonic() - started,
+            exc,
+        )
         donation.checkout_request_id = None
 
     if not donation.checkout_request_id:

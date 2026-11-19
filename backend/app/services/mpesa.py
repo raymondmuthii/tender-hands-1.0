@@ -52,7 +52,10 @@ def _get_access_token() -> str:
     response = requests.get(
         url,
         headers={"Authorization": f"Basic {credentials}"},
-        timeout=10,
+        # Kept short: the whole request has to finish inside the hosting
+        # function limit, or the browser gets a gateway error instead of a
+        # readable JSON response.
+        timeout=5,
     )
     response.raise_for_status()
     return response.json()["access_token"]
@@ -155,7 +158,7 @@ def stk_push(phone: str, amount: int, account_reference: str, description: str) 
         url,
         json=payload,
         headers={"Authorization": f"Bearer {token}"},
-        timeout=15,
+        timeout=5,
     )
     if response.status_code >= 400:
         # Daraja explains the rejection in the body (wrong passkey, unknown
