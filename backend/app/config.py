@@ -7,6 +7,20 @@ from dotenv import load_dotenv
 load_dotenv()
 
 
+def parse_origins(raw: str) -> list[str]:
+    """Split a comma-separated origin list, trimming whitespace and trailing slashes.
+
+    A browser's Origin header never ends in "/", so a configured
+    "https://example.app/" would never match and every request would fail CORS.
+    """
+    origins = []
+    for part in raw.split(","):
+        origin = part.strip().rstrip("/")
+        if origin:
+            origins.append(origin)
+    return origins
+
+
 class Config:
     # Core
     SECRET_KEY = os.environ.get("SECRET_KEY", "change-me-in-production")
@@ -37,13 +51,9 @@ class Config:
     JWT_REFRESH_TOKEN_EXPIRES = timedelta(days=30)
 
     # CORS – comma-separated list of allowed origins
-    CORS_ORIGINS = [
-        o.strip()
-        for o in os.environ.get(
-            "CORS_ORIGINS", "http://localhost:3000,http://localhost:5173"
-        ).split(",")
-        if o.strip()
-    ]
+    CORS_ORIGINS = parse_origins(
+        os.environ.get("CORS_ORIGINS", "http://localhost:3000,http://localhost:5173")
+    )
 
     # M-Pesa (Daraja)
     MPESA_CONSUMER_KEY = os.environ.get("MPESA_CONSUMER_KEY", "")
