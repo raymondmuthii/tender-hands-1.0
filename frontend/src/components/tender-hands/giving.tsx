@@ -29,6 +29,9 @@ export function GivingProvider({ children }: { children: ReactNode }) {
 
   const donate = (charity = fallbackCharities[0]) => {
     if (!charity) return;
+    // Re-read auth each time the dialog opens: the token may have been saved
+    // after this provider mounted (log in, then browse to a charity).
+    setIsLoggedIn(api.auth.isLoggedIn());
     setSelected(charity);
     setAmount('1000');
     setPhone('');

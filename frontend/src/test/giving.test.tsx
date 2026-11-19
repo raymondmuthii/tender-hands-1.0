@@ -47,6 +47,25 @@ describe('Donation dialog', () => {
     expect(screen.queryByLabelText(/Donation amount/i)).not.toBeInTheDocument();
   });
 
+  it('lets a visitor who logged in after the page loaded donate without a reload', async () => {
+    // The provider mounted while logged out, then the user signed in.
+    mockApi.auth.isLoggedIn.mockReturnValue(false);
+
+    render(
+      <GivingProvider>
+        <Harness />
+      </GivingProvider>,
+    );
+
+    mockApi.auth.isLoggedIn.mockReturnValue(true);
+    fireEvent.click(screen.getByRole('button', { name: 'Open donate dialog' }));
+
+    expect(await screen.findByLabelText(/Donation amount/i)).toBeInTheDocument();
+    expect(
+      screen.queryByText(/Create a free account or log in to donate securely/i),
+    ).not.toBeInTheDocument();
+  });
+
   it('does not call the API when the amount is not positive', async () => {
     mockApi.auth.isLoggedIn.mockReturnValue(true);
 
